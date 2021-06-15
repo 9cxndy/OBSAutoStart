@@ -1,0 +1,13 @@
+﻿{
+  "$schema": "https://raw.githubusercontent.com/nike4613/ModSaber-MetadataFileSchema/master/Schema.json",
+  "id": "OBSAutoStart",
+  "name": "OBSAutoStart",
+  "author": "a",
+  "version": "0.0.1",
+  "description": "Start OBS recording on game start",
+  "gameVersion": "1.16.2",
+  "dependsOn": {
+    "BSIPA": "^4.1.6"
+  },
+  "features": []
+}

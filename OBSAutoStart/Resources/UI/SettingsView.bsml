@@ -1,0 +1,6 @@
+<settings-container xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:schemaLocation='https://monkeymanboy.github.io/BSML-Docs/ https://raw.githubusercontent.com/monkeymanboy/BSML-Docs/gh-pages/BSMLSchema.xsd'>
+  <string-setting text='Server Address' value='ServerAddress'
+                  hover-hint='OBS websocket server address (usually in the form of ws://ip:port)' />
+  <string-setting text='Server Password' value='ServerPassword'
+                  hover-hint='Password for the OBS websocket server, leave blank if none.' />
+</settings-container>
