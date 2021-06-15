@@ -5,7 +5,7 @@
 * Required OBS plugin
   * [OBS-Websocket](https://github.com/Palakis/obs-websocket/releases)
 * Required Beat Saber plugin
-  * [WebsocketSharp](https://github.com/sta/websocket-sharp)
+  * [WebsocketSharp](https://beatmods.com/uploads/60ba54612d008b3daa41eae9/universal/websocket-sharp-1.0.4.zip)
 
 ## Features
 
