@@ -1,13 +1,15 @@
 using System;
 using UnityEngine;
 using OBSWebsocketDotNet;
+using System.Threading;
 using System.Threading.Tasks;
 #nullable enable
 namespace OBSAutoStart {
     internal class OBSController : MonoBehaviour {
         internal static GameObject? instance;
-        private OBSWebsocket? obs;
-        public bool TryConnect()
+        private Task? task;
+        private CancellationTokenSource? cancelSource;
+        public bool TryConnect(OBSWebsocket obs)
         {
             string serverAddress = Plugin.config.ServerAddress;
             if(serverAddress == null || serverAddress.Length == 0)
@@ -15,7 +17,7 @@ namespace OBSAutoStart {
                 Plugin.log?.Error($"ServerAddress cannot be null or empty.");
                 return false;
             }
-            if (obs != null && !obs.IsConnected)
+            if (!obs.IsConnected)
             {
                 try
                 {
@@ -46,33 +48,42 @@ namespace OBSAutoStart {
             return obs?.IsConnected ?? false;
         }
 
-        private DateTime? lastAttempt;
-        private void Update()
-        {
-            var now = DateTime.Now;
-            if (obs != null && !obs.IsConnected && (lastAttempt == null || DateTime.Now - lastAttempt > TimeSpan.FromSeconds(5)))
-            {
-                try {
-                    Plugin.log?.Info($"Attempting to connect to {Plugin.config.ServerAddress}");
-                    if (TryConnect()) {
-                        Plugin.log?.Info($"OBS {obs.GetVersion().OBSStudioVersion} is connected.");
-                        var recordingStatus = obs.GetRecordingStatus();
-                        if (!recordingStatus.IsRecording) {
-                            Plugin.log?.Info($"OBS start recording.");
-                            obs.StartRecording();
-                        } else if (recordingStatus.IsRecordingPaused) {
-                            Plugin.log?.Info($"OBS resume recording.");
-                            obs.ResumeRecording();
+        private void OBSTask(CancellationToken cancel) {
+            var obs = new OBSWebsocket();
+            while (!cancel.IsCancellationRequested) {
+                if (!obs.IsConnected)
+                {
+                    try {
+                        Plugin.log?.Info($"Attempting to connect to {Plugin.config.ServerAddress}");
+                        if (TryConnect(obs)) {
+                            Plugin.log?.Info($"OBS {obs.GetVersion().OBSStudioVersion} is connected.");
+                            var recordingStatus = obs.GetRecordingStatus();
+                            if (!recordingStatus.IsRecording) {
+                                Plugin.log?.Info($"OBS start recording.");
+                                obs.StartRecording();
+                            } else if (recordingStatus.IsRecordingPaused) {
+                                Plugin.log?.Info($"OBS resume recording.");
+                                obs.ResumeRecording();
+                            }
                         }
                     }
-                    lastAttempt = now;
+                    catch (Exception ex)
+                    {
+                        Plugin.log?.Error($"Error in RepeatTryConnect: {ex.Message}");
+                        Plugin.log?.Debug(ex);
+                    }
                 }
-                catch (Exception ex)
+                try {
+                    Task.Delay(2000, cancel).Wait();
+                } catch (Exception)
                 {
-                    Plugin.log?.Error($"Error in RepeatTryConnect: {ex.Message}");
-                    Plugin.log?.Debug(ex);
+
                 }
             }
+            if (obs.IsConnected) {
+                obs.StopRecording();
+            }
+            obs.Disconnect();
         }
         private void Awake() {
             if (instance != null) {
@@ -81,16 +92,17 @@ namespace OBSAutoStart {
             }
             GameObject.DontDestroyOnLoad(gameObject);
             instance = gameObject;
-            obs = new OBSWebsocket();
+            cancelSource = new CancellationTokenSource();
+            task = Task.Run(() => OBSTask(cancelSource.Token));
         }
-        private void OnDisable()
+        private void OnDestroy()
         {
             Plugin.log?.Debug("Stopping OBS recording");
-            if (obs != null && obs.IsConnected) {
-                obs.StopRecording();
-            }
+            cancelSource?.Cancel();
+            cancelSource = null;
             instance = null;
-            obs = null;
+            Task.WaitAll(task);
+            task = null;
         }
     }
 }
